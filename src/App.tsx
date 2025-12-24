@@ -30,6 +30,24 @@ const LazyNameEntries = lazy(() =>
 
 import "./index.css";
 import "./fireworks.css";
+import "./snow.css";
+
+// Snow effect component for Christmas Eve
+function SnowEffect() {
+  const snowflakes = Array.from({ length: 50 }, (_, i) => (
+    <div key={i} className="snowflake">
+      ❄
+    </div>
+  ));
+
+  return <div className="snowfall">{snowflakes}</div>;
+}
+
+// Check if today is Christmas Eve (December 24th)
+function isChristmasEve(): boolean {
+  const today = new Date();
+  return today.getMonth() === 11 && today.getDate() === 24;
+}
 
 function App() {
   const initialHeaderText =
@@ -128,6 +146,7 @@ function App() {
 
   return (
     <>
+      {isChristmasEve() && <SnowEffect />}
       <Box as="main" minH="100vh">
         <Container maxW="container.xl" py={6}>
           <Heading
