@@ -57,6 +57,9 @@ function App() {
   const [winner, setWinner] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [headerText, setHeaderText] = useState<string>(initialHeaderText);
+  const [excludedNames, setExcludedNames] = useState<Set<string>>(
+    new Set(JSON.parse(localStorage.getItem("excluded-names") || "[]"))
+  );
 
   useEffect(() => {
     updateHeaderText(initialHeaderText);
@@ -169,6 +172,7 @@ function App() {
                 setNames={setNames}
                 onShuffle={handleShuffle}
                 onSelectWinner={(name: string) => announceWinner(name)}
+                excludedNames={excludedNames}
               />
             </Box>
             <Box width={{ base: "100%", md: "40%" }}>
@@ -178,6 +182,8 @@ function App() {
                 headerText={headerText}
                 setHeaderText={handleHeaderChange}
                 pickRandomHeader={pickRandomHeader}
+                excludedNames={excludedNames}
+                setExcludedNames={setExcludedNames}
               />
             </Box>
           </Flex>

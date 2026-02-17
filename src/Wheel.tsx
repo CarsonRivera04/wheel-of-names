@@ -7,6 +7,7 @@ interface WheelProps {
   setNames: (names: string[]) => void;
   onShuffle?: () => void;
   onSelectWinner?: (winner: string) => void;
+  excludedNames?: Set<string>;
 }
 
 const spinSound = new Howl({
@@ -23,6 +24,7 @@ export const Wheel: React.FC<WheelProps> = ({
   setNames,
   onShuffle,
   onSelectWinner,
+  excludedNames = new Set(),
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [angle, setAngle] = useState(0);
@@ -201,65 +203,79 @@ export const Wheel: React.FC<WheelProps> = ({
     setIsSpinning(true);
     spinSound.play();
 
-    const duration = 5500; // Slightly longer duration
-    const segmentSize = (2 * Math.PI) / names.length;
+    const spinAgain = () => {
+      const duration = 5500; // Slightly longer duration
+      const segmentSize = (2 * Math.PI) / names.length;
 
-    // Randomize the starting angle for true randomness
-    const startingAngle = Math.random() * 2 * Math.PI;
-    const randomOffset = Math.random() * segmentSize; // Fully random offset within a segment
-    const finalAngle = startingAngle + 12 * Math.PI + randomOffset;
+      // Randomize the starting angle for true randomness
+      const startingAngle = Math.random() * 2 * Math.PI;
+      const randomOffset = Math.random() * segmentSize; // Fully random offset within a segment
+      const finalAngle = startingAngle + 12 * Math.PI + randomOffset;
 
-    const start = performance.now();
+      const start = performance.now();
 
-    const animate = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1); // Ensure progress matches the intended duration
+      const animate = (now: number) => {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1); // Ensure progress matches the intended duration
 
-      // Use a more realistic easing function for deceleration
-      const easedProgress = 1 - Math.pow(1 - progress, 3); // Changed to cubic easing for smoother animation
-      const newAngle =
-        startingAngle + (finalAngle - startingAngle) * easedProgress;
+        // Use a more realistic easing function for deceleration
+        const easedProgress = 1 - Math.pow(1 - progress, 3); // Changed to cubic easing for smoother animation
+        const newAngle =
+          startingAngle + (finalAngle - startingAngle) * easedProgress;
 
-      setAngle(newAngle);
+        setAngle(newAngle);
 
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setIsSpinning(false);
-        setTimeout(() => spinSound.stop(), 200); // Delay stopping spinSound slightly
-        winSound.play();
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // Calculate the winner
+          const normalizedAngle =
+            ((newAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          const offsetAngle = (normalizedAngle + Math.PI / 2) % (2 * Math.PI);
+          const winnerIndex =
+            names.length -
+            1 -
+            (Math.floor(offsetAngle / segmentSize) % names.length);
 
-        // Calculate the winner
-        const normalizedAngle =
-          ((newAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-        const offsetAngle = (normalizedAngle + Math.PI / 2) % (2 * Math.PI);
-        const winnerIndex =
-          names.length -
-          1 -
-          (Math.floor(offsetAngle / segmentSize) % names.length);
+          const winner = names[winnerIndex];
 
-        const winner = names[winnerIndex];
-        console.log(`Winner: ${winner} (index: ${winnerIndex})`);
+          // If excluded, spin again! (the gag)
+          if (excludedNames.has(winner)) {
+            console.log(`${winner} tried to win but NOPE! Spinning again...`);
+            spinSound.play();
+            spinAgain();
+            return;
+          }
 
-        if (onSelectWinner) {
-          onSelectWinner(winner);
+          // Winner is not excluded, stop and announce
+          setIsSpinning(false);
+          setTimeout(() => spinSound.stop(), 200);
+          winSound.play();
+
+          console.log(`Winner: ${winner} (index: ${winnerIndex})`);
+
+          if (onSelectWinner) {
+            onSelectWinner(winner);
+          }
+
+          // Reset angle to avoid bias in subsequent spins
+          setAngle(normalizedAngle);
+
+          // Stop auto-spin after announcing the winner
+          if (slowSpinIntervalRef.current) {
+            clearInterval(slowSpinIntervalRef.current);
+            slowSpinIntervalRef.current = null;
+          }
+
+          // Stop spin sound immediately after the wheel stops
+          spinSound.stop();
         }
+      };
 
-        // Reset angle to avoid bias in subsequent spins
-        setAngle(normalizedAngle);
-
-        // Stop auto-spin after announcing the winner
-        if (slowSpinIntervalRef.current) {
-          clearInterval(slowSpinIntervalRef.current);
-          slowSpinIntervalRef.current = null;
-        }
-
-        // Stop spin sound immediately after the wheel stops
-        spinSound.stop();
-      }
+      requestAnimationFrame(animate);
     };
 
-    requestAnimationFrame(animate);
+    spinAgain();
   };
 
   const handleMouseDown = (event: React.MouseEvent | React.TouchEvent) => {

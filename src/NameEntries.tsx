@@ -14,6 +14,8 @@ interface NameEntriesProps {
   headerText: string;
   setHeaderText: (e: React.ChangeEvent<HTMLInputElement>) => void;
   pickRandomHeader: () => void;
+  excludedNames?: Set<string>;
+  setExcludedNames?: (excluded: Set<string>) => void;
 }
 
 export const EditableHeader: React.FC<{
@@ -59,6 +61,8 @@ export const NameEntries: React.FC<NameEntriesProps> = ({
   headerText,
   setHeaderText,
   pickRandomHeader,
+  excludedNames = new Set(),
+  setExcludedNames = () => {},
 }) => {
   const defaultNames = [
     "Alice",
@@ -107,6 +111,17 @@ export const NameEntries: React.FC<NameEntriesProps> = ({
     if (textarea) {
       textarea.value = updatedNames.join("\n");
     }
+  };
+
+  const toggleExcluded = (name: string) => {
+    const newExcluded = new Set(excludedNames);
+    if (newExcluded.has(name)) {
+      newExcluded.delete(name);
+    } else {
+      newExcluded.add(name);
+    }
+    setExcludedNames(newExcluded);
+    localStorage.setItem("excluded-names", JSON.stringify(Array.from(newExcluded)));
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -219,6 +234,53 @@ export const NameEntries: React.FC<NameEntriesProps> = ({
             onChange={handleTextareaChange}
           />
         </Box>
+
+        {names.length > 0 && (
+          <Box mt={6}>
+            <Box
+              fontSize="sm"
+              fontWeight="bold"
+              mb={3}
+              color="#333333"
+            >
+              Excluded Names (won't be selected):
+            </Box>
+            <Flex
+              direction="column"
+              gap={2}
+              maxH="200px"
+              overflowY="auto"
+            >
+              {names.map((name) => (
+                <Flex
+                  key={name}
+                  align="center"
+                  justify="space-between"
+                  p={2}
+                  borderRadius="4px"
+                  bg={excludedNames.has(name) ? "#FFE6E6" : "#F8F7F3"}
+                  border={excludedNames.has(name) ? "1px solid #FF9999" : "1px solid #CCCCCC"}
+                >
+                  <Box fontSize="sm" color="#333333">
+                    {name}
+                  </Box>
+                  <Button
+                    size="sm"
+                    bg={excludedNames.has(name) ? "#FF9999" : "#EAEAEA"}
+                    color={excludedNames.has(name) ? "white" : "#333333"}
+                    borderRadius="4px"
+                    _hover={{
+                      bg: excludedNames.has(name) ? "#FF6666" : "#CCCCCC"
+                    }}
+                    onClick={() => toggleExcluded(name)}
+                  >
+                    {excludedNames.has(name) ? "✓ Excluded" : "Exclude"}
+                  </Button>
+                </Flex>
+              ))}
+            </Flex>
+          </Box>
+        )}
       </Box>
     </>
   );
